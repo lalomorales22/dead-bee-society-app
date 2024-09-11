@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Recent Posts</h2>
+    {% for post in posts %}
+        <article class="post">
+            <img src="{{ post.image_url }}" alt="Dead Bee Image" class="post-image">
+            <div class="post-content">
+                <p>{{ post.content }}</p>
+                <p class="post-meta">Posted by {{ post.author.username }} on {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+            </div>
+            <div class="comments">
+                <h3>Comments</h3>
+                {% for comment in post.comments %}
+                    <div class="comment">
+                        <p>{{ comment.content }}</p>
+                        <p class="comment-meta">Commented by {{ comment.author.username }} on {{ comment.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                {% endfor %}
+                {% if current_user.is_authenticated %}
+                    <form action="{{ url_for('comment_post', post_id=post.id) }}" method="post" class="comment-form">
+                        {{ form.hidden_tag() }}
+                        {{ form.content.label }} {{ form.content() }}
+                        <input type="submit" value="Add Comment">
+                    </form>
+                {% endif %}
+            </div>
+        </article>
+    {% endfor %}
+{% endblock %}
