@@ -7,6 +7,7 @@ from config import Config
 from utils import generate_dead_bee_image
 import logging
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import or_
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -129,6 +130,17 @@ def profile(username):
         form.bio.data = user.bio
     posts = Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).all()
     return render_template('profile.html', user=user, form=form, posts=posts)
+
+@app.route('/search')
+def search():
+    query = request.args.get('query', '')
+    if query:
+        posts = Post.query.filter(Post.content.ilike(f'%{query}%')).all()
+        users = User.query.filter(or_(User.username.ilike(f'%{query}%'), User.email.ilike(f'%{query}%'))).all()
+    else:
+        posts = []
+        users = []
+    return render_template('search_results.html', query=query, posts=posts, users=users)
 
 if __name__ == '__main__':
     with app.app_context():

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Search Results for "{{ query }}"</h2>
+    
+    <h3>Users</h3>
+    {% if users %}
+        <ul>
+        {% for user in users %}
+            <li>
+                <a href="{{ url_for('profile', username=user.username) }}">{{ user.username }}</a>
+                {% if user.bio %}
+                    - {{ user.bio[:50] }}...
+                {% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No users found.</p>
+    {% endif %}
+
+    <h3>Posts</h3>
+    {% if posts %}
+        {% for post in posts %}
+            <div class="post">
+                <p>{{ post.content }}</p>
+                <img src="{{ post.image_url }}" alt="Dead Bee Image" class="post-image">
+                <div class="post-meta">
+                    Posted by <a href="{{ url_for('profile', username=post.author.username) }}">{{ post.author.username }}</a>
+                    on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No posts found.</p>
+    {% endif %}
+{% endblock %}
