@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash
@@ -9,6 +10,8 @@ from utils import generate_dead_bee_image
 import logging
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
+
+load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)
 app.config.from_object(Config)

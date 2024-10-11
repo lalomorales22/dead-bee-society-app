@@ -244,32 +244,6 @@ button[type="submit"]:hover {
     text-decoration: underline;
 }
 
-.comment-form {
-    margin-top: 1rem;
-}
-
-.comment-input {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid var(--dark-yellow);
-    border-radius: 4px;
-    resize: vertical;
-}
-
-.comment-submit {
-    background-color: var(--honey-yellow);
-    color: var(--bee-black);
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.comment-submit:hover {
-    background-color: var(--dark-yellow);
-}
-
 @media (max-width: 600px) {
     header {
         padding: 0.5rem;
