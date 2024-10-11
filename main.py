@@ -1,8 +1,8 @@
 from flask import Flask, render_template, redirect, url_for, flash, request
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash
-from models import db, User, Post, Comment
-from forms import RegistrationForm, LoginForm, PostForm, CommentForm, ProfileForm
+from models import db, User, Post, Comment, Category
+from forms import RegistrationForm, LoginForm, PostForm, CommentForm, ProfileForm, CategoryForm
 from config import Config
 from utils import generate_dead_bee_image
 import logging
@@ -93,9 +93,12 @@ def logout():
 @login_required
 def new_post():
     form = PostForm()
+    form.categories.choices = [(c.id, c.name) for c in Category.query.order_by('name')]
     if form.validate_on_submit():
         image_url = generate_dead_bee_image()
         post = Post(content=form.content.data, image_url=image_url, author=current_user)
+        selected_categories = Category.query.filter(Category.id.in_(form.categories.data)).all()
+        post.categories = selected_categories
         db.session.add(post)
         db.session.commit()
         flash('Your post has been created!', 'success')
@@ -137,10 +140,30 @@ def search():
     if query:
         posts = Post.query.filter(Post.content.ilike(f'%{query}%')).all()
         users = User.query.filter(or_(User.username.ilike(f'%{query}%'), User.email.ilike(f'%{query}%'))).all()
+        categories = Category.query.filter(Category.name.ilike(f'%{query}%')).all()
     else:
         posts = []
         users = []
-    return render_template('search_results.html', query=query, posts=posts, users=users)
+        categories = []
+    return render_template('search_results.html', query=query, posts=posts, users=users, categories=categories)
+
+@app.route('/category/new', methods=['GET', 'POST'])
+@login_required
+def new_category():
+    form = CategoryForm()
+    if form.validate_on_submit():
+        category = Category(name=form.name.data)
+        db.session.add(category)
+        db.session.commit()
+        flash('New category has been created!', 'success')
+        return redirect(url_for('index'))
+    return render_template('category.html', form=form, title='New Category')
+
+@app.route('/category/<int:category_id>')
+def category_posts(category_id):
+    category = Category.query.get_or_404(category_id)
+    posts = Post.query.filter(Post.categories.contains(category)).order_by(Post.timestamp.desc()).all()
+    return render_template('category_posts.html', category=category, posts=posts)
 
 if __name__ == '__main__':
     with app.app_context():

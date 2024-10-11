@@ -5,10 +5,7 @@
     <form method="POST" action="">
         {{ form.hidden_tag() }}
         <div>
-            {{ form.content.label }} {{ form.content() }}
-        </div>
-        <div>
-            {{ form.categories.label }} {{ form.categories() }}
+            {{ form.name.label }} {{ form.name() }}
         </div>
         <div>
             {{ form.submit() }}

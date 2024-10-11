@@ -7,7 +7,16 @@
             <img src="{{ post.image_url }}" alt="Dead Bee Image" class="post-image">
             <div class="post-content">
                 <p>{{ post.content }}</p>
-                <p class="post-meta">Posted by {{ post.author.username }} on {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                <p class="post-meta">
+                    Posted by <a href="{{ url_for('profile', username=post.author.username) }}">{{ post.author.username }}</a>
+                    on {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                </p>
+                <p class="post-categories">
+                    Categories:
+                    {% for category in post.categories %}
+                        <a href="{{ url_for('category_posts', category_id=category.id) }}">{{ category.name }}</a>
+                    {% endfor %}
+                </p>
             </div>
             <div class="comments">
                 <h3>Comments</h3>

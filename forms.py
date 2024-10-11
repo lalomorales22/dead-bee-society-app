@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, SubmitField
+from wtforms import StringField, PasswordField, TextAreaField, SubmitField, SelectMultipleField
 from wtforms.validators import DataRequired, Email, Length, URL, Optional
 
 class RegistrationForm(FlaskForm):
@@ -15,6 +15,7 @@ class LoginForm(FlaskForm):
 
 class PostForm(FlaskForm):
     content = TextAreaField('Content', validators=[DataRequired(), Length(max=500)])
+    categories = SelectMultipleField('Categories', coerce=int)
     submit = SubmitField('Post')
 
 class CommentForm(FlaskForm):
@@ -25,3 +26,7 @@ class ProfileForm(FlaskForm):
     avatar = StringField('Avatar URL', validators=[Optional(), URL()])
     bio = TextAreaField('Bio', validators=[Optional(), Length(max=500)])
     submit = SubmitField('Update Profile')
+
+class CategoryForm(FlaskForm):
+    name = StringField('Category Name', validators=[DataRequired(), Length(max=50)])
+    submit = SubmitField('Add Category')

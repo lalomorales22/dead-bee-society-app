@@ -29,9 +29,28 @@
                     Posted by <a href="{{ url_for('profile', username=post.author.username) }}">{{ post.author.username }}</a>
                     on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
                 </div>
+                <div class="post-categories">
+                    Categories:
+                    {% for category in post.categories %}
+                        <a href="{{ url_for('category_posts', category_id=category.id) }}">{{ category.name }}</a>
+                    {% endfor %}
+                </div>
             </div>
         {% endfor %}
     {% else %}
         <p>No posts found.</p>
+    {% endif %}
+
+    <h3>Categories</h3>
+    {% if categories %}
+        <ul>
+        {% for category in categories %}
+            <li>
+                <a href="{{ url_for('category_posts', category_id=category.id) }}">{{ category.name }}</a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No categories found.</p>
     {% endif %}
 {% endblock %}
