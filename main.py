@@ -1,7 +1,7 @@
-from flask import Flask, render_template, redirect, url_for, flash, request
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash
-from models import db, User, Post, Comment, Category
+from models import db, User, Post, Comment, Category, Notification
 from forms import RegistrationForm, LoginForm, PostForm, CommentForm, ProfileForm, CategoryForm
 from config import Config
 from utils import generate_dead_bee_image
@@ -133,6 +133,56 @@ def profile(username):
         form.bio.data = user.bio
     posts = Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).all()
     return render_template('profile.html', user=user, form=form, posts=posts)
+
+@app.route('/follow/<username>')
+@login_required
+def follow(username):
+    user = User.query.filter_by(username=username).first()
+    if user is None:
+        flash('User not found.', 'error')
+        return redirect(url_for('index'))
+    if user == current_user:
+        flash('You cannot follow yourself!', 'error')
+        return redirect(url_for('profile', username=username))
+    current_user.follow(user)
+    db.session.commit()
+    flash(f'You are now following {username}!', 'success')
+    notification = Notification(user_id=user.id, message=f'{current_user.username} started following you.')
+    db.session.add(notification)
+    db.session.commit()
+    return redirect(url_for('profile', username=username))
+
+@app.route('/unfollow/<username>')
+@login_required
+def unfollow(username):
+    user = User.query.filter_by(username=username).first()
+    if user is None:
+        flash('User not found.', 'error')
+        return redirect(url_for('index'))
+    if user == current_user:
+        flash('You cannot unfollow yourself!', 'error')
+        return redirect(url_for('profile', username=username))
+    current_user.unfollow(user)
+    db.session.commit()
+    flash(f'You have unfollowed {username}.', 'success')
+    return redirect(url_for('profile', username=username))
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    notifications = Notification.query.filter_by(user_id=current_user.id, is_read=False).order_by(Notification.timestamp.desc()).all()
+    return render_template('notifications.html', notifications=notifications)
+
+@app.route('/mark_notification_read/<int:notification_id>')
+@login_required
+def mark_notification_read(notification_id):
+    notification = Notification.query.get_or_404(notification_id)
+    if notification.user_id != current_user.id:
+        flash('You do not have permission to mark this notification as read.', 'error')
+        return redirect(url_for('notifications'))
+    notification.is_read = True
+    db.session.commit()
+    return redirect(url_for('notifications'))
 
 @app.route('/search')
 def search():

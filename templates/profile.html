@@ -10,6 +10,14 @@
             <p class="profile-bio">{{ user.bio }}</p>
         {% endif %}
         
+        {% if user != current_user %}
+            {% if not current_user.is_following(user) %}
+                <a href="{{ url_for('follow', username=user.username) }}" class="btn btn-primary">Follow</a>
+            {% else %}
+                <a href="{{ url_for('unfollow', username=user.username) }}" class="btn btn-secondary">Unfollow</a>
+            {% endif %}
+        {% endif %}
+        
         {% if user == current_user %}
             <h2>Edit Profile</h2>
             <form method="POST" action="{{ url_for('profile', username=user.username) }}">

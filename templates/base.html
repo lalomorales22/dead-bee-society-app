@@ -16,6 +16,7 @@
                     <li><a href="{{ url_for('new_post') }}">New Post</a></li>
                     <li><a href="{{ url_for('new_category') }}">New Category</a></li>
                     <li><a href="{{ url_for('profile', username=current_user.username) }}">Profile</a></li>
+                    <li><a href="{{ url_for('notifications') }}">Notifications</a></li>
                     <li><a href="{{ url_for('logout') }}">Logout</a></li>
                 {% else %}
                     <li><a href="{{ url_for('login') }}">Login</a></li>
