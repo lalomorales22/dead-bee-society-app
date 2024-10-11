@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash
@@ -16,7 +17,8 @@ db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -95,12 +97,20 @@ def new_post():
     form = PostForm()
     form.categories.choices = [(c.id, c.name) for c in Category.query.order_by('name')]
     if form.validate_on_submit():
-        image_url = generate_dead_bee_image()
-        post = Post(content=form.content.data, image_url=image_url, author=current_user)
+        logger.debug(f"Generating image for message: {form.content.data}")
+        image_data, error = generate_dead_bee_image(form.content.data)
+        if error:
+            logger.error(f"Error generating image: {error}")
+            flash(f"Error generating image: {error}", 'error')
+            return render_template('post.html', form=form, title='New Post')
+
+        logger.debug(f"Image data received. Length: {len(image_data) if image_data else 'None'}")
+        post = Post(content=form.content.data, image_url=image_data, author=current_user)
         selected_categories = Category.query.filter(Category.id.in_(form.categories.data)).all()
         post.categories = selected_categories
         db.session.add(post)
         db.session.commit()
+        logger.info(f"New post created by user {current_user.username}")
         flash('Your post has been created!', 'success')
         return redirect(url_for('index'))
     return render_template('post.html', form=form, title='New Post')
@@ -217,6 +227,5 @@ def category_posts(category_id):
 
 if __name__ == '__main__':
     with app.app_context():
-        update_schema()
-        test_db_connection()
-    app.run(host="0.0.0.0", port=5000)
+        db.create_all()
+    app.run(host="0.0.0.0", port=5000, debug=True)
