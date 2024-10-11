@@ -2,7 +2,7 @@ from flask import Flask, render_template, redirect, url_for, flash, request
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash
 from models import db, User, Post, Comment
-from forms import RegistrationForm, LoginForm, PostForm, CommentForm
+from forms import RegistrationForm, LoginForm, PostForm, CommentForm, ProfileForm
 from config import Config
 from utils import generate_dead_bee_image
 import logging
@@ -27,8 +27,8 @@ def create_tables():
 
 def update_schema():
     with app.app_context():
-        db.drop_all()  # This will drop all existing tables
-        db.create_all()  # This will recreate all tables with the updated schema
+        db.drop_all()
+        db.create_all()
         db.session.commit()
 
 def test_db_connection():
@@ -63,14 +63,10 @@ def register():
         except SQLAlchemyError as e:
             db.session.rollback()
             app.logger.error(f"SQLAlchemy error during user registration: {str(e)}")
-            app.logger.error(f"Error code: {e.code if hasattr(e, 'code') else 'N/A'}")
-            app.logger.error(f"Error details: {e.orig if hasattr(e, 'orig') else 'N/A'}")
             flash('An error occurred during registration. Please try again.', 'error')
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Unexpected error during user registration: {str(e)}")
-            app.logger.error(f"Exception type: {type(e).__name__}")
-            app.logger.error(f"Exception details: {e.args}")
             flash('An unexpected error occurred during registration. Please try again.', 'error')
     return render_template('register.html', form=form)
 
@@ -117,8 +113,25 @@ def comment_post(post_id):
         flash('Your comment has been added!', 'success')
     return redirect(url_for('index'))
 
+@app.route('/profile/<username>', methods=['GET', 'POST'])
+@login_required
+def profile(username):
+    user = User.query.filter_by(username=username).first_or_404()
+    form = ProfileForm()
+    if form.validate_on_submit() and user == current_user:
+        user.avatar = form.avatar.data
+        user.bio = form.bio.data
+        db.session.commit()
+        flash('Your profile has been updated!', 'success')
+        return redirect(url_for('profile', username=username))
+    elif request.method == 'GET':
+        form.avatar.data = user.avatar
+        form.bio.data = user.bio
+    posts = Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).all()
+    return render_template('profile.html', user=user, form=form, posts=posts)
+
 if __name__ == '__main__':
     with app.app_context():
-        update_schema()  # This will force a schema update
-        test_db_connection()  # Test the database connection before running the app
+        update_schema()
+        test_db_connection()
     app.run(host="0.0.0.0", port=5000)

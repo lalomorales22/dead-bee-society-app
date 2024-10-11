@@ -10,6 +10,8 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255))
+    avatar = db.Column(db.String(200))  # New field for avatar URL
+    bio = db.Column(db.Text)  # New field for user bio
     posts = db.relationship('Post', backref='author', lazy=True)
 
     def set_password(self, password):
