@@ -1,21 +1,39 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>Register</h2>
-    <form method="POST" action="">
+<div class="auth-form-container">
+    <h2>Join Dead Bee Society</h2>
+    <form method="POST" action="" class="auth-form">
         {{ form.hidden_tag() }}
-        <div>
-            {{ form.username.label }} {{ form.username() }}
+        <div class="auth-form-group">
+            {{ form.username.label }}
+            {{ form.username(class="auth-form-input", placeholder="Choose a username") }}
         </div>
-        <div>
-            {{ form.email.label }} {{ form.email() }}
+        <div class="auth-form-group">
+            {{ form.email.label }}
+            {{ form.email(class="auth-form-input", placeholder="Enter your email") }}
         </div>
-        <div>
-            {{ form.password.label }} {{ form.password() }}
+        <div class="auth-form-group">
+            {{ form.password.label }}
+            {{ form.password(class="auth-form-input", placeholder="Create a password") }}
         </div>
-        <div>
-            <input type="submit" value="Register">
+        <div class="auth-form-group">
+            {{ form.avatar.label }}
+            {{ form.avatar(class="auth-form-input", placeholder="Optional: Enter avatar URL") }}
+        </div>
+        <div class="auth-form-group">
+            {{ form.submit(class="auth-form-submit") }}
         </div>
     </form>
-    <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+    <p class="auth-form-link">Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="100" viewBox="0 0 56 100"><path d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" fill="none" stroke="rgba(255, 165, 0, 0.2)"/></svg>');
+        background-size: 56px 100px;
+    }
+</style>
 {% endblock %}

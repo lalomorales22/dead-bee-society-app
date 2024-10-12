@@ -217,6 +217,100 @@ main {
     color: var(--bee-black);
 }
 
+.auth-form-container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: var(--off-white);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 2px solid var(--honey-yellow);
+}
+
+.auth-form-container h2 {
+    color: var(--honey-yellow);
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 2rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-form-group {
+    margin-bottom: 1.5rem;
+}
+
+.auth-form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--bee-black);
+    font-weight: bold;
+}
+
+.auth-form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--light-gray);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.auth-form-group input:focus {
+    outline: none;
+    border-color: var(--honey-yellow);
+    box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
+}
+
+.auth-form-submit {
+    background-color: var(--honey-yellow);
+    color: var(--bee-black);
+    border: none;
+    padding: 0.75rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.auth-form-submit:hover {
+    background-color: var(--dark-yellow);
+    transform: translateY(-2px);
+}
+
+.auth-form-submit:active {
+    transform: translateY(0);
+}
+
+.auth-form-link {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.auth-form-link a {
+    color: var(--honey-yellow);
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+.auth-form-link a:hover {
+    color: var(--dark-yellow);
+    text-decoration: underline;
+}
+
+body.auth-page {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="100" viewBox="0 0 56 100"><path d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" fill="none" stroke="rgba(255, 165, 0, 0.2)"/></svg>');
+    background-size: 56px 100px;
+}
+
 @media (max-width: 600px) {
     .post {
         padding: 1.5rem;
@@ -228,5 +322,21 @@ main {
 
     .search-form input[type="text"] {
         width: 60%;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-form-container {
+        max-width: 100%;
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    .auth-form-container h2 {
+        font-size: 1.75rem;
+    }
+
+    .auth-form-group input {
+        padding: 0.6rem;
     }
 }

@@ -1,18 +1,31 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>Login</h2>
-    <form method="POST" action="">
+<div class="auth-form-container">
+    <h2>Login to Dead Bee Society</h2>
+    <form method="POST" action="" class="auth-form">
         {{ form.hidden_tag() }}
-        <div>
-            {{ form.username.label }} {{ form.username() }}
+        <div class="auth-form-group">
+            {{ form.username.label }}
+            {{ form.username(class="auth-form-input", placeholder="Enter your username") }}
         </div>
-        <div>
-            {{ form.password.label }} {{ form.password() }}
+        <div class="auth-form-group">
+            {{ form.password.label }}
+            {{ form.password(class="auth-form-input", placeholder="Enter your password") }}
         </div>
-        <div>
-            <input type="submit" value="Login">
+        <div class="auth-form-group">
+            <input type="submit" value="Login" class="auth-form-submit">
         </div>
     </form>
-    <p>New User? <a href="{{ url_for('register') }}">Register here</a></p>
+    <p class="auth-form-link">New to Dead Bee Society? <a href="{{ url_for('register') }}">Register here</a></p>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="100" viewBox="0 0 56 100"><path d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" fill="none" stroke="rgba(255, 165, 0, 0.2)"/></svg>');
+        background-size: 56px 100px;
+    }
+</style>
 {% endblock %}
