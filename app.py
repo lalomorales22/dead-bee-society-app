@@ -9,6 +9,8 @@ from datetime import datetime
 import requests
 import base64
 import logging
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -19,87 +21,46 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 socketio = SocketIO(app)
 
-# Database setup
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect('dead_bee_society.db')
-    return db
-    
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
+    avatar = db.Column(db.String(10))
 
-def init_db():
-    with app.app_context():
-        db = get_db()
-        cursor = db.cursor()
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users
-            (id INTEGER PRIMARY KEY AUTOINCREMENT,
-             username TEXT UNIQUE NOT NULL,
-             password TEXT NOT NULL,
-             avatar TEXT)
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS messages
-            (id INTEGER PRIMARY KEY AUTOINCREMENT,
-             user_id INTEGER,
-             content TEXT NOT NULL,
-             image_data TEXT,
-             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-             FOREIGN KEY (user_id) REFERENCES users (id))
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS comments
-            (id INTEGER PRIMARY KEY AUTOINCREMENT,
-             user_id INTEGER,
-             message_id INTEGER,
-             content TEXT NOT NULL,
-             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-             FOREIGN KEY (user_id) REFERENCES users (id),
-             FOREIGN KEY (message_id) REFERENCES messages (id))
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS reactions
-            (id INTEGER PRIMARY KEY AUTOINCREMENT,
-             message_id INTEGER,
-             user_id INTEGER,
-             reaction TEXT,
-             FOREIGN KEY (message_id) REFERENCES messages (id),
-             FOREIGN KEY (user_id) REFERENCES users (id),
-             UNIQUE(message_id, user_id, reaction))
-        ''')
-        
-        db.commit()
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    image_data = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-init_db()
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message_id = db.Column(db.Integer, db.ForeignKey('message.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-class User(UserMixin):
-    def __init__(self, id, username, avatar):
-        self.id = id
-        self.username = username
-        self.avatar = avatar
+class Reaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('message.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    reaction = db.Column(db.String(10), nullable=False)
+    __table_args__ = (db.UniqueConstraint('message_id', 'user_id', 'reaction'),)
 
 @login_manager.user_loader
 def load_user(user_id):
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-    user = cursor.fetchone()
-    if user:
-        return User(user[0], user[1], user[3])
-    return None
+    return User.query.get(int(user_id))
 
 def generate_dead_bee_image(prompt):
     logger.debug(f"Generating dead bee image with prompt: {prompt}")
@@ -117,7 +78,6 @@ def generate_dead_bee_image(prompt):
         "Authorization": f"Bearer {api_key}"
     }
     
-    # Modify the prompt to always include a bee
     bee_prompt = f"A detailed illustration of a bee in the following scene or context: {prompt}. The bee should be the main focus of the image."
     
     payload = {
@@ -131,7 +91,6 @@ def generate_dead_bee_image(prompt):
     logger.debug(f"API Request Payload: {payload}")
 
     try:
-        # Test API connectivity
         try:
             test_response = requests.get("https://api.stability.ai/v1/engines/list", headers=headers)
             logger.debug(f"API Connectivity Test: {test_response.status_code}")
@@ -145,7 +104,7 @@ def generate_dead_bee_image(prompt):
         response = requests.post(url, headers=headers, json=payload)
         logger.debug(f"API Response Status: {response.status_code}")
         logger.debug(f"API Response Headers: {response.headers}")
-        logger.debug(f"API Response Content: {response.text[:1000]}...")  # Log first 1000 characters
+        logger.debug(f"API Response Content: {response.text[:1000]}...")
 
         response.raise_for_status()
         data = response.json()
@@ -168,37 +127,7 @@ def generate_dead_bee_image(prompt):
 @app.route('/')
 def index():
     logger.debug("Accessing index route")
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute('''
-        SELECT messages.id, messages.content, messages.image_data, messages.timestamp, users.username, users.avatar
-        FROM messages
-        JOIN users ON messages.user_id = users.id
-        ORDER BY messages.timestamp DESC
-    ''')
-    messages = cursor.fetchall()
-    
-    for i, message in enumerate(messages):
-        cursor.execute('''
-            SELECT comments.content, comments.timestamp, users.username, users.avatar
-            FROM comments
-            JOIN users ON comments.user_id = users.id
-            WHERE comments.message_id = ?
-            ORDER BY comments.timestamp ASC
-        ''', (message[0],))
-        comments = cursor.fetchall()
-        
-        cursor.execute('''
-            SELECT reaction, COUNT(*) as count
-            FROM reactions
-            WHERE message_id = ?
-            GROUP BY reaction
-        ''', (message[0],))
-        reactions = dict(cursor.fetchall())
-        
-        messages[i] = message + (comments, reactions)
-    
-    logger.debug(f"Rendering index with {len(messages)} messages")
+    messages = Message.query.order_by(Message.timestamp.desc()).all()
     return render_template_string(BASE_HTML, messages=messages)
 
 @app.route('/post_message', methods=['POST'])
@@ -214,29 +143,18 @@ def post_message():
             logger.error(f"Error generating image: {error}")
             return f"Error generating image: {error}", 500
 
-        db = get_db()
-        cursor = db.cursor()
-        cursor.execute("INSERT INTO messages (user_id, content, image_data) VALUES (?, ?, ?)",
-                       (current_user.id, content, image_data))
-        message_id = cursor.lastrowid
-        db.commit()
+        new_message = Message(user_id=current_user.id, content=content, image_data=image_data)
+        db.session.add(new_message)
+        db.session.commit()
         
-        cursor.execute('''
-            SELECT messages.id, messages.content, messages.image_data, messages.timestamp, users.username, users.avatar
-            FROM messages
-            JOIN users ON messages.user_id = users.id
-            WHERE messages.id = ?
-        ''', (message_id,))
-        new_message = cursor.fetchone()
-        
-        logger.debug(f"New message posted with ID: {message_id}")
+        logger.debug(f"New message posted with ID: {new_message.id}")
         socketio.emit('new_message', {
-            'id': new_message[0],
-            'content': new_message[1],
-            'image_data': new_message[2],
-            'timestamp': new_message[3],
-            'username': new_message[4],
-            'avatar': new_message[5],
+            'id': new_message.id,
+            'content': new_message.content,
+            'image_data': new_message.image_data,
+            'timestamp': new_message.timestamp.isoformat(),
+            'username': current_user.username,
+            'avatar': current_user.avatar,
             'reactions': {}
         })
     return redirect(url_for('index'))
@@ -247,28 +165,17 @@ def post_comment(message_id):
     logger.debug(f"Posting new comment for message ID: {message_id}")
     content = request.form.get('content')
     if content:
-        db = get_db()
-        cursor = db.cursor()
-        cursor.execute("INSERT INTO comments (user_id, message_id, content) VALUES (?, ?, ?)",
-                       (current_user.id, message_id, content))
-        comment_id = cursor.lastrowid
-        db.commit()
+        new_comment = Comment(user_id=current_user.id, message_id=message_id, content=content)
+        db.session.add(new_comment)
+        db.session.commit()
         
-        cursor.execute('''
-            SELECT comments.content, comments.timestamp, users.username, users.avatar
-            FROM comments
-            JOIN users ON comments.user_id = users.id
-            WHERE comments.id = ?
-        ''', (comment_id,))
-        new_comment = cursor.fetchone()
-        
-        logger.debug(f"New comment posted with ID: {comment_id}")
+        logger.debug(f"New comment posted with ID: {new_comment.id}")
         socketio.emit('new_comment', {
             'message_id': message_id,
-            'content': new_comment[0],
-            'timestamp': new_comment[1],
-            'username': new_comment[2],
-            'avatar': new_comment[3]
+            'content': new_comment.content,
+            'timestamp': new_comment.timestamp.isoformat(),
+            'username': current_user.username,
+            'avatar': current_user.avatar
         })
     return redirect(url_for('index'))
 
@@ -278,13 +185,9 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         logger.debug(f"Login attempt for user: {username}")
-        db = get_db()
-        cursor = db.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-        user = cursor.fetchone()
-        if user and check_password_hash(user[2], password):
-            user_obj = User(user[0], user[1], user[3])
-            login_user(user_obj)
+        user = User.query.filter_by(username=username).first()
+        if user and check_password_hash(user.password, password):
+            login_user(user)
             logger.debug(f"User {username} logged in successfully")
             return redirect(url_for('index'))
         logger.warning(f"Failed login attempt for user: {username}")
@@ -298,15 +201,12 @@ def register():
         password = request.form.get('password')
         avatar = request.form.get('avatar')
         logger.debug(f"Registration attempt for user: {username}")
-        db = get_db()
-        cursor = db.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-        if cursor.fetchone():
+        if User.query.filter_by(username=username).first():
             logger.warning(f"Registration failed: Username {username} already exists")
             return "Username already exists"
-        cursor.execute("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)",
-                       (username, generate_password_hash(password), avatar))
-        db.commit()
+        new_user = User(username=username, password=generate_password_hash(password), avatar=avatar)
+        db.session.add(new_user)
+        db.session.commit()
         logger.debug(f"User {username} registered successfully")
         return redirect(url_for('login'))
     return render_template_string(REGISTER_HTML)
@@ -321,21 +221,12 @@ def logout():
 @app.route('/profile/<username>')
 def profile(username):
     logger.debug(f"Accessing profile for user: {username}")
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT id, username, avatar FROM users WHERE username = ?", (username,))
-    user = cursor.fetchone()
+    user = User.query.filter_by(username=username).first()
     if user is None:
         logger.warning(f"Profile not found for user: {username}")
         return "User not found", 404
     
-    cursor.execute('''
-        SELECT messages.id, messages.content, messages.image_data, messages.timestamp
-        FROM messages
-        WHERE messages.user_id = ?
-        ORDER BY messages.timestamp DESC
-    ''', (user[0],))
-    messages = cursor.fetchall()
+    messages = Message.query.filter_by(user_id=user.id).order_by(Message.timestamp.desc()).all()
     
     logger.debug(f"Rendering profile for user {username} with {len(messages)} messages")
     return render_template_string(PROFILE_HTML, user=user, messages=messages)
@@ -344,28 +235,22 @@ def profile(username):
 @login_required
 def add_reaction(message_id, reaction):
     logger.debug(f"Adding reaction {reaction} to message ID: {message_id}")
-    db = get_db()
-    cursor = db.cursor()
     try:
-        cursor.execute('''
-            INSERT INTO reactions (message_id, user_id, reaction)
-            VALUES (?, ?, ?)
-            ON CONFLICT(message_id, user_id, reaction) DO UPDATE SET reaction = excluded.reaction
-        ''', (message_id, current_user.id, reaction))
-        db.commit()
+        existing_reaction = Reaction.query.filter_by(message_id=message_id, user_id=current_user.id, reaction=reaction).first()
+        if existing_reaction:
+            db.session.delete(existing_reaction)
+        else:
+            new_reaction = Reaction(message_id=message_id, user_id=current_user.id, reaction=reaction)
+            db.session.add(new_reaction)
+        db.session.commit()
         
-        cursor.execute('''
-            SELECT reaction, COUNT(*) as count
-            FROM reactions
-            WHERE message_id = ?
-            GROUP BY reaction
-        ''', (message_id,))
-        reactions = dict(cursor.fetchall())
+        reactions = Reaction.query.filter_by(message_id=message_id).group_by(Reaction.reaction).with_entities(Reaction.reaction, db.func.count(Reaction.id)).all()
+        reactions_dict = dict(reactions)
         
-        logger.debug(f"Reaction added successfully. Current reactions: {reactions}")
+        logger.debug(f"Reaction added successfully. Current reactions: {reactions_dict}")
         socketio.emit('reaction_update', {
             'message_id': message_id,
-            'reactions': reactions
+            'reactions': reactions_dict
         })
         
         return 'OK', 200
@@ -543,34 +428,34 @@ BASE_HTML = '''
             </form>
         {% endif %}
         {% for message in messages %}
-            <div class="message" data-message-id="{{ message[0] }}">
-                <div class="message-content">{{ message[1] }}</div>
-                <img src="data:image/png;base64,{{ message[2] }}" alt="Dead Bee" class="dead-bee-image">
+            <div class="message" data-message-id="{{ message.id }}">
+                <div class="message-content">{{ message.content }}</div>
+                <img src="data:image/png;base64,{{ message.image_data }}" alt="Dead Bee" class="dead-bee-image">
                 <div class="message-meta">
-                    <span class="avatar">{{ message[5] }}</span>
-                    Posted by <a href="{{ url_for('profile', username=message[4]) }}">{{ message[4] }}</a> on {{ message[3] }}
+                    <span class="avatar">{{ message.user.avatar }}</span>
+                    Posted by <a href="{{ url_for('profile', username=message.user.username) }}">{{ message.user.username }}</a> on {{ message.timestamp }}
                 </div>
                 <div class="reactions">
-                    {% for reaction, count in message[7].items() %}
-                        <button onclick="addReaction({{ message[0] }}, '{{ reaction }}')">{{ reaction }} {{ count }}</button>
+                    {% for reaction in message.reactions %}
+                        <button onclick="addReaction({{ message.id }}, '{{ reaction.reaction }}')">{{ reaction.reaction }} {{ reaction.count }}</button>
                     {% endfor %}
                 </div>
-                {% if message[6] %}
+                {% if message.comments %}
                     <div class="comments-section">
                         <h3>Comments:</h3>
-                        {% for comment in message[6] %}
+                        {% for comment in message.comments %}
                             <div class="comment">
-                                <div class="comment-content">{{ comment[0] }}</div>
+                                <div class="comment-content">{{ comment.content }}</div>
                                 <div class="comment-meta">
-                                    <span class="avatar">{{ comment[3] }}</span>
-                                    Posted by <a href="{{ url_for('profile', username=comment[2]) }}">{{ comment[2] }}</a> on {{ comment[1] }}
+                                    <span class="avatar">{{ comment.user.avatar }}</span>
+                                    Posted by <a href="{{ url_for('profile', username=comment.user.username) }}">{{ comment.user.username }}</a> on {{ comment.timestamp }}
                                 </div>
                             </div>
                         {% endfor %}
                     </div>
                 {% endif %}
                 {% if current_user.is_authenticated %}
-                    <form action="{{ url_for('post_comment', message_id=message[0]) }}" method="post">
+                    <form action="{{ url_for('post_comment', message_id=message.id) }}" method="post">
                         <input type="text" name="content" placeholder="Add a comment" required>
                         <input type="submit" value="Post Comment">
                     </form>
@@ -714,7 +599,7 @@ PROFILE_HTML = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ user[1] }}'s Profile - Dead Bee Society</title>
+    <title>{{ user.username }}'s Profile - Dead Bee Society</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -773,14 +658,14 @@ PROFILE_HTML = '''
             <a href="{{ url_for('index') }}">Home</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
-        <h1>{{ user[1] }}'s Profile</h1>
-        <p><span class="avatar">{{ user[2] }}</span> {{ user[1] }}</p>
+        <h1>{{ user.username }}'s Profile</h1>
+        <p><span class="avatar">{{ user.avatar }}</span> {{ user.username }}</p>
         <h2>Messages</h2>
         {% for message in messages %}
             <div class="message">
-                <div class="message-content">{{ message[1] }}</div>
-                <img src="data:image/png;base64,{{ message[2] }}" alt="Dead Bee" class="dead-bee-image">
-                <div class="message-meta">Posted on {{ message[3] }}</div>
+                <div class="message-content">{{ message.content }}</div>
+                <img src="data:image/png;base64,{{ message.image_data }}" alt="Dead Bee" class="dead-bee-image">
+                <div class="message-meta">Posted on {{ message.timestamp }}</div>
             </div>
         {% endfor %}
     </div>

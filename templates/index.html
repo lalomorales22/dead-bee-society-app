@@ -5,7 +5,7 @@
     {% for post in posts %}
         <article class="post">
             {% if post.image_url %}
-                <img src="{{ post.image_url }}" alt="Dead Bee Image" class="post-image">
+                <img src="data:image/png;base64,{{ post.image_url }}" alt="Dead Bee Image" class="post-image" onerror="this.onerror=null; this.src='/static/images/placeholder.png';">
             {% else %}
                 <div class="post-image-placeholder">Dead Bee Image</div>
             {% endif %}

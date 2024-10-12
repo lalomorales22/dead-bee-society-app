@@ -2,8 +2,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from flask_migrate import Migrate
 
 db = SQLAlchemy()
+migrate = Migrate()
 
 followers = db.Table('followers',
     db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
@@ -50,7 +52,7 @@ class Category(db.Model):
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.String(500), nullable=False)
-    image_url = db.Column(db.String(200), nullable=False)
+    image_url = db.Column(db.Text, nullable=True)  # Changed to Text and nullable=True
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     comments = db.relationship('Comment', backref='post', lazy=True)

@@ -1,6 +1,7 @@
 import os
 import requests
 import logging
+import base64
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)

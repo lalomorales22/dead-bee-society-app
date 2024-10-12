@@ -1,6 +1,8 @@
 import os
 from dotenv import load_dotenv
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash
 from models import db, User, Post, Comment, Category, Notification
@@ -11,12 +13,14 @@ import logging
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
+migrate = Migrate(app, db)
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -50,6 +54,9 @@ def test_db_connection():
 @app.route('/')
 def index():
     posts = Post.query.order_by(Post.timestamp.desc()).all()
+    for post in posts:
+        logger.debug(f"Post ID: {post.id}, Image URL length: {len(post.image_url) if post.image_url else 'None'}")
+        logger.debug(f"Post ID: {post.id}, Image URL preview: {post.image_url[:100] if post.image_url else 'None'}...")
     form = CommentForm()
     return render_template('index.html', posts=posts, form=form)
 
@@ -114,6 +121,9 @@ def new_post():
         db.session.add(post)
         db.session.commit()
         logger.info(f"New post created by user {current_user.username}")
+        logger.debug(f"Post content: {post.content}")
+        logger.debug(f"Post image_url length: {len(post.image_url) if post.image_url else 'None'}")
+        logger.debug(f"Post image_url preview: {post.image_url[:100] if post.image_url else 'None'}...")
         flash('Your post has been created!', 'success')
         return redirect(url_for('index'))
     return render_template('post.html', form=form, title='New Post')
