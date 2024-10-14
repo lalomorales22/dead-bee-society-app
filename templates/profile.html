@@ -1,46 +1,73 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="profile-container">
-        <h1>{{ user.username }}'s Profile</h1>
-        {% if user.avatar %}
-            <img src="{{ user.avatar }}" alt="{{ user.username }}'s avatar" class="profile-avatar">
-        {% endif %}
-        {% if user.bio %}
-            <p class="profile-bio">{{ user.bio }}</p>
-        {% endif %}
-        
-        {% if user != current_user %}
-            {% if not current_user.is_following(user) %}
-                <a href="{{ url_for('follow', username=user.username) }}" class="btn btn-primary">Follow</a>
+<div class="profile-container">
+    <div class="profile-header">
+        <div class="profile-avatar-container">
+            {% if user.avatar %}
+                <img src="{{ user.avatar }}" alt="{{ user.username }}'s avatar" class="profile-avatar">
             {% else %}
-                <a href="{{ url_for('unfollow', username=user.username) }}" class="btn btn-secondary">Unfollow</a>
+                <div class="profile-avatar profile-avatar-placeholder">{{ user.username[0].upper() }}</div>
             {% endif %}
-        {% endif %}
-        
-        {% if user == current_user %}
+        </div>
+        <div class="profile-info">
+            <h1 class="profile-username">{{ user.username }}</h1>
+            <div class="profile-bio-container">
+                {% if user.bio %}
+                    <p class="profile-bio">{{ user.bio }}</p>
+                {% else %}
+                    <p class="profile-bio profile-bio-placeholder">No bio available.</p>
+                {% endif %}
+            </div>
+            {% if current_user.is_authenticated and user != current_user %}
+                <div class="profile-actions">
+                    {% if not current_user.is_following(user) %}
+                        <a href="{{ url_for('follow', username=user.username) }}" class="btn btn-primary">Follow</a>
+                    {% else %}
+                        <a href="{{ url_for('unfollow', username=user.username) }}" class="btn btn-secondary">Unfollow</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if current_user.is_authenticated and user == current_user %}
+        <div class="profile-edit">
             <h2>Edit Profile</h2>
-            <form method="POST" action="{{ url_for('profile', username=user.username) }}">
+            <form method="POST" action="{{ url_for('profile', username=user.username) }}" class="profile-form">
                 {{ form.hidden_tag() }}
-                <div>
-                    {{ form.avatar.label }}
+                <div class="form-group">
+                    {{ form.avatar.label(class="form-label") }}
                     {{ form.avatar(class="form-control") }}
                 </div>
-                <div>
-                    {{ form.bio.label }}
-                    {{ form.bio(class="form-control") }}
+                <div class="form-group">
+                    {{ form.bio.label(class="form-label") }}
+                    {{ form.bio(class="form-control", rows=4) }}
                 </div>
                 {{ form.submit(class="btn btn-primary") }}
             </form>
-        {% endif %}
+        </div>
+    {% endif %}
 
+    <div class="profile-posts">
         <h2>{{ user.username }}'s Posts</h2>
         {% for post in posts %}
             <div class="post">
-                <p>{{ post.content }}</p>
-                <img src="{{ post.image_url }}" alt="Dead Bee Image" class="post-image">
-                <small>Posted on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                <div class="post-content">
+                    <p>{{ post.content }}</p>
+                </div>
+                {% if post.image_url %}
+                    <div class="post-image">
+                        <img src="data:image/png;base64,{{ post.image_url }}" alt="Dead Bee Image" class="post-image">
+                    </div>
+                {% endif %}
+                <div class="post-meta">
+                    <small class="post-timestamp">Posted on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                </div>
             </div>
+        {% else %}
+            <p class="no-posts">No posts yet.</p>
         {% endfor %}
     </div>
+</div>
 {% endblock %}
