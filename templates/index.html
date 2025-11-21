@@ -1,48 +1,60 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>Recent Posts</h2>
-    {% for post in posts %}
-        <article class="post">
-            <div class="post-content">
-                <p class="post-text">{{ post.content }}</p>
-                <div class="post-meta">
-                    <span class="post-author">Posted by <a href="{{ url_for('profile', username=post.author.username) }}">{{ post.author.username }}</a></span>
-                    <span class="post-date">on {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
-                </div>
-                <div class="post-categories">
-                    {% if post.categories %}
-                        {% for category in post.categories %}
-                            <span class="category-tag"><a href="{{ url_for('category_posts', category_id=category.id) }}">{{ category.name }}</a></span>
-                        {% endfor %}
-                    {% else %}
-                        <span class="category-tag">Uncategorized</span>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="post-image">
-                {% if post.image_url %}
-                    <img src="data:image/png;base64,{{ post.image_url }}" alt="Bee Image" onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/placeholder.svg') }}';">
-                {% else %}
-                    <img src="{{ url_for('static', filename='images/placeholder.svg') }}" alt="Bee Image Placeholder">
-                {% endif %}
-            </div>
+<h1>Dead Bee Society 🐝💀</h1>
+<p style="text-align: center;">Air your grievances and watch them get deaded!</p>
+
+{% if current_user.is_authenticated %}
+    <form action="{{ url_for('post_message') }}" method="post" style="text-align: center;">
+        <textarea name="content" placeholder="Share your 'dead bee' grievance here..." required rows="4"></textarea>
+        <input type="submit" value="🐝 DEAD IT! 🐝">
+    </form>
+{% endif %}
+
+<div class="messages-container">
+{% for message in messages %}
+    <div class="message" data-message-id="{{ message.id }}">
+        <div class="deaded-badge">DEADED</div>
+        <div class="message-content">{{ message.content }}</div>
+        {% if message.image_data %}
+            <img src="data:image/png;base64,{{ message.image_data }}" alt="Dead Bee" class="dead-bee-image">
+        {% endif %}
+        <div class="message-meta">
+            <span class="avatar">{{ message.user.avatar }}</span>
+            Posted by <a href="{{ url_for('profile', username=message.user.username) }}">{{ message.user.username }}</a> on {{ message.timestamp }}
+        </div>
+        <div class="reactions">
+            {% for reaction in message.reactions %}
+                <button onclick="addReaction({{ message.id }}, '{{ reaction.reaction }}')">{{ reaction.reaction }} {{ reaction.count }}</button>
+            {% endfor %}
+            <!-- Add reaction buttons for users to click if they haven't yet -->
+             <button onclick="addReaction({{ message.id }}, '❤️')">❤️</button>
+             <button onclick="addReaction({{ message.id }}, '🙏')">🙏</button>
+             <button onclick="addReaction({{ message.id }}, '🐝')">🐝</button>
+        </div>
+        {% if message.comments %}
             <div class="comments-section">
-                <h4>Comments</h4>
-                {% for comment in post.comments %}
+                <h3>Comments:</h3>
+                {% for comment in message.comments %}
                     <div class="comment">
-                        <p class="comment-content">{{ comment.content }}</p>
-                        <p class="comment-meta">Commented by {{ comment.author.username }} on {{ comment.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        <div class="comment-content">{{ comment.content }}</div>
+                        <div class="comment-meta">
+                            <span class="avatar">{{ comment.user.avatar }}</span>
+                            Posted by <a href="{{ url_for('profile', username=comment.user.username) }}">{{ comment.user.username }}</a> on {{ comment.timestamp }}
+                        </div>
                     </div>
                 {% endfor %}
-                {% if current_user.is_authenticated %}
-                    <form action="{{ url_for('comment_post', post_id=post.id) }}" method="post" class="comment-form">
-                        {{ form.hidden_tag() }}
-                        {{ form.content(class="comment-input", placeholder="Add a comment...") }}
-                        <input type="submit" value="Add Comment" class="comment-submit">
-                    </form>
-                {% endif %}
             </div>
-        </article>
-    {% endfor %}
+        {% else %}
+            <div class="comments-section"></div>
+        {% endif %}
+        {% if current_user.is_authenticated %}
+            <form action="{{ url_for('post_comment', message_id=message.id) }}" method="post" style="margin-top: 10px;">
+                <input type="text" name="content" placeholder="Add a comment" required>
+                <input type="submit" value="Post Comment">
+            </form>
+        {% endif %}
+    </div>
+{% endfor %}
+</div>
 {% endblock %}

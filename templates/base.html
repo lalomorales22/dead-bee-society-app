@@ -4,44 +4,222 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dead Bee Society</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif;
+            background-color: #FFFACD; /* LemonChiffon */
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 5px solid #FFD700; /* Gold */
+        }
+        h1, h2 {
+            color: #DAA520; /* GoldenRod */
+            text-align: center;
+        }
+        .message {
+            border: 3px dashed #FFD700;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            background-color: #FFFFE0; /* LightYellow */
+            position: relative;
+        }
+        .message-content {
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        .message-meta {
+            font-size: 0.8em;
+            color: #777;
+            margin-top: 5px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input[type="text"], input[type="password"], textarea, select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        input[type="submit"], button {
+            background-color: #FFD700;
+            color: #8B4513;
+            border: none;
+            padding: 12px 25px;
+            cursor: pointer;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1em;
+            transition: transform 0.1s;
+        }
+        input[type="submit"]:hover, button:hover {
+            transform: scale(1.05);
+            background-color: #FFC107;
+        }
+        .nav {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .nav a {
+            color: #8B4513;
+            margin: 0 10px;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 10px;
+            background-color: #FFF8DC;
+        }
+        .nav a:hover {
+            background-color: #FFD700;
+        }
+        .comments-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px dotted #FFD700;
+        }
+        .comment {
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+        }
+        .avatar {
+            font-size: 1.5em;
+            margin-right: 5px;
+        }
+        .dead-bee-image {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+            border: 2px solid #333;
+        }
+        .reactions button {
+            background-color: #FFF8DC;
+            border: 1px solid #FFD700;
+            padding: 5px 10px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .deaded-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: #FF6347; /* Tomato */
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            transform: rotate(15deg);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        var socket = io();
+
+        socket.on('new_message', function(message) {
+            console.log('New message received:', message);
+            var messagesContainer = document.querySelector('.messages-container');
+            var newMessageElement = document.createElement('div');
+            newMessageElement.className = 'message';
+            newMessageElement.setAttribute('data-message-id', message.id);
+            newMessageElement.innerHTML = `
+                <div class="deaded-badge">DEADED</div>
+                <div class="message-content">${message.content}</div>
+                <img src="data:image/png;base64,${message.image_data}" alt="Dead Bee" class="dead-bee-image">
+                <div class="message-meta">
+                    <span class="avatar">${message.avatar}</span>
+                    Posted by <a href="/profile/${message.username}">${message.username}</a> on ${message.timestamp}
+                </div>
+                <div class="reactions">
+                </div>
+                <div class="comments-section"></div>
+                <form action="/post_comment/${message.id}" method="post">
+                    <input type="text" name="content" placeholder="Add a comment" required>
+                    <input type="submit" value="Post Comment">
+                </form>
+            `;
+            // Insert after the form
+            if (messagesContainer) {
+                messagesContainer.insertBefore(newMessageElement, messagesContainer.firstChild);
+            } else {
+                // If we are on a page without the container yet (empty), we should handle it.
+                // But typically index page has a loop.
+            }
+        });
+
+        socket.on('new_comment', function(comment) {
+            console.log('New comment received:', comment);
+            var messageElement = document.querySelector(`[data-message-id="${comment.message_id}"]`);
+            if (messageElement) {
+                var commentsSection = messageElement.querySelector('.comments-section');
+                var newCommentElement = document.createElement('div');
+                newCommentElement.className = 'comment';
+                newCommentElement.innerHTML = `
+                    <div class="comment-content">${comment.content}</div>
+                    <div class="comment-meta">
+                        <span class="avatar">${comment.avatar}</span>
+                        Posted by <a href="/profile/${comment.username}">${comment.username}</a> on ${comment.timestamp}
+                    </div>
+                `;
+                commentsSection.appendChild(newCommentElement);
+            }
+        });
+
+        socket.on('reaction_update', function(data) {
+            console.log('Reaction update received:', data);
+            var messageElement = document.querySelector(`[data-message-id="${data.message_id}"]`);
+            if (messageElement) {
+                var reactionsElement = messageElement.querySelector('.reactions');
+                if (reactionsElement) {
+                    reactionsElement.innerHTML = '';
+                    for (var reaction in data.reactions) {
+                        reactionsElement.innerHTML += `<button onclick="addReaction(${data.message_id}, '${reaction}')">${reaction} ${data.reactions[reaction]}</button>`;
+                    }
+                }
+            }
+        });
+
+        function addReaction(messageId, reaction) {
+            console.log('Adding reaction:', messageId, reaction);
+            fetch(`/add_reaction/${messageId}/${reaction}`, {method: 'GET'})
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    </script>
 </head>
 <body>
-    <header>
-        <h1>Dead Bee Society</h1>
-        <nav>
-            <ul>
-                <li><a href="{{ url_for('index') }}">Home</a></li>
-                {% if current_user.is_authenticated %}
-                    <li><a href="{{ url_for('new_post') }}">New Post</a></li>
-                    <li><a href="{{ url_for('new_category') }}">New Category</a></li>
-                    <li><a href="{{ url_for('profile', username=current_user.username) }}">Profile</a></li>
-                    <li><a href="{{ url_for('notifications') }}">Notifications</a></li>
-                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
-                {% else %}
-                    <li><a href="{{ url_for('login') }}">Login</a></li>
-                    <li><a href="{{ url_for('register') }}">Register</a></li>
-                {% endif %}
-            </ul>
-        </nav>
-        <form action="{{ url_for('search') }}" method="GET" class="search-form">
-            <input type="text" name="query" placeholder="Search posts, users, or categories" required>
-            <button type="submit">Search</button>
-        </form>
-    </header>
-    <main>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
+    <div class="container">
+        <div class="nav">
+            <a href="{{ url_for('index') }}">Home</a>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+                <a href="{{ url_for('profile', username=current_user.username) }}">Profile</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('register') }}">Register</a>
             {% endif %}
-        {% endwith %}
+        </div>
         {% block content %}{% endblock %}
-    </main>
-    <footer>
-        <p>&copy; 2023 Dead Bee Society</p>
-    </footer>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    </div>
 </body>
 </html>

@@ -89,14 +89,14 @@ def generate_dead_bee_image(prompt):
         return get_placeholder_dead_bee_image()
 
     url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
-    
+
     headers = {
         "Accept": "application/json",
         "Authorization": f"Bearer {api_key}"
     }
-    
+
     bee_prompt = f"A cute cartoon illustration of a dead bee with X eyes, representing a resolved grievance: {prompt}. Bright colors, fun style."
-    
+
     payload = {
         "text_prompts": [{"text": bee_prompt}],
         "cfg_scale": 7,
@@ -150,7 +150,7 @@ def index():
 def post_message():
     logger.debug("Posting new message")
     content = request.form.get('content')
-    
+
     if content:
         logger.debug(f"Generating image for message: {content}")
         image_data, error = generate_dead_bee_image(content)
@@ -159,7 +159,7 @@ def post_message():
         new_message = Message(user_id=current_user.id, content=content, image_data=image_data)
         db.session.add(new_message)
         db.session.commit()
-        
+
         logger.debug(f"New message posted with ID: {new_message.id}")
         socketio.emit('new_message', {
             'id': new_message.id,
@@ -181,7 +181,7 @@ def post_comment(message_id):
         new_comment = Comment(user_id=current_user.id, message_id=message_id, content=content)
         db.session.add(new_comment)
         db.session.commit()
-        
+
         logger.debug(f"New comment posted with ID: {new_comment.id}")
         socketio.emit('new_comment', {
             'message_id': message_id,
@@ -238,9 +238,9 @@ def profile(username):
     if user is None:
         logger.warning(f"Profile not found for user: {username}")
         return "User not found", 404
-    
+
     messages = Message.query.filter_by(user_id=user.id).order_by(Message.timestamp.desc()).all()
-    
+
     return render_template('profile.html', user=user, messages=messages)
 
 @app.route('/add_reaction/<int:message_id>/<reaction>')
@@ -255,16 +255,16 @@ def add_reaction(message_id, reaction):
             new_reaction = Reaction(message_id=message_id, user_id=current_user.id, reaction=reaction)
             db.session.add(new_reaction)
         db.session.commit()
-        
+
         reactions = Reaction.query.filter_by(message_id=message_id).group_by(Reaction.reaction).with_entities(Reaction.reaction, db.func.count(Reaction.id)).all()
         reactions_dict = dict(reactions)
-        
+
         logger.debug(f"Reaction added successfully. Current reactions: {reactions_dict}")
         socketio.emit('reaction_update', {
             'message_id': message_id,
             'reactions': reactions_dict
         })
-        
+
         return 'OK', 200
     except Exception as e:
         logger.error(f"Error adding reaction: {str(e)}")
